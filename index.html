@@ -6,11 +6,9 @@
   <title>AirParty</title>
   <style>
     :root{
-      --bg:#070707;
       --panel:#0f0f10;
       --panel2:#141416;
       --red:#ff2b2b;
-      --red2:#b10f0f;
       --text:#f3f3f3;
       --muted:#b9b9b9;
       --stroke:#2a2a2e;
@@ -50,27 +48,18 @@
         linear-gradient(180deg, var(--panel), var(--panel2));
       border:1px solid var(--stroke);
       border-radius:18px;
-      box-shadow:
-        0 18px 60px var(--shadow),
-        inset 0 1px 0 rgba(255,255,255,.06);
+      box-shadow: 0 18px 60px var(--shadow), inset 0 1px 0 rgba(255,255,255,.06);
       overflow:hidden;
     }
     .head{
       padding:18px 18px 14px 18px;
       border-bottom:1px solid rgba(255,255,255,.06);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
     }
     .brand{ display:flex; flex-direction:column; gap:3px; }
     .brand h1{
-      margin:0;
-      font-size:18px;
-      letter-spacing:.6px;
-      display:flex;
-      align-items:center;
-      gap:10px;
+      margin:0; font-size:18px; letter-spacing:.6px;
+      display:flex; align-items:center; gap:10px;
     }
     .dot{
       width:10px;height:10px;border-radius:99px;
@@ -92,28 +81,19 @@
     .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .field{
       flex:1 1 260px;
-      display:flex;
-      align-items:center;
-      gap:10px;
+      display:flex; align-items:center; gap:10px;
       padding:12px 12px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,.08);
       background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.05),
-        inset 0 -10px 25px rgba(0,0,0,.35);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -10px 25px rgba(0,0,0,.35);
       min-height:48px;
     }
     .field label{ font-size:12px; color:var(--muted); min-width:86px; }
     .field input[type="text"], .field input[type="url"]{
-      width:100%;
-      background:transparent;
-      border:0;
-      outline:none;
-      color:var(--text);
-      font-size:14px;
+      width:100%; background:transparent; border:0; outline:none;
+      color:var(--text); font-size:14px;
     }
-    .field input::placeholder{ color: rgba(243,243,243,.35); }
     input[type="file"]{ width:100%; color:var(--muted); }
     .btn{
       border:1px solid rgba(255,43,43,.30);
@@ -125,41 +105,34 @@
       border-radius:14px;
       cursor:pointer;
       font-weight:700;
-      letter-spacing:.2px;
       box-shadow:
         0 14px 30px rgba(255,43,43,.18),
         0 8px 18px rgba(0,0,0,.55),
         inset 0 1px 0 rgba(255,255,255,.18),
         inset 0 -10px 16px rgba(0,0,0,.25);
-      transition: transform .08s ease, filter .08s ease;
+      transition: transform .08s ease;
       user-select:none;
     }
-    .btn:active{ transform: translateY(1px) scale(.99); filter:saturate(1.05); }
+    .btn:active{ transform: translateY(1px) scale(.99); }
     .btn.secondary{
       border:1px solid rgba(255,255,255,.10);
       background:
         radial-gradient(120% 140% at 30% 20%, rgba(255,255,255,.08), transparent 45%),
         linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
       color:var(--text);
-      box-shadow:
-        0 14px 30px rgba(0,0,0,.45),
-        inset 0 1px 0 rgba(255,255,255,.08),
-        inset 0 -10px 16px rgba(0,0,0,.30);
+      box-shadow: 0 14px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08), inset 0 -10px 16px rgba(0,0,0,.30);
     }
     .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
     .hint{ color: var(--muted); font-size:12px; line-height:1.35; }
     .hr{ height:1px; background: rgba(255,255,255,.06); margin:2px 0; }
-    .mono{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size:12px;
-    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; }
     .log{
       background: rgba(0,0,0,.35);
       border:1px solid rgba(255,255,255,.08);
       border-radius:14px;
       padding:12px;
-      min-height:120px;
-      max-height:220px;
+      min-height:140px;
+      max-height:260px;
       overflow:auto;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
     }
@@ -167,7 +140,6 @@
     .log .err{ color:#ffb0b0; }
     .log .ok{ color:#b9ffcd; }
     .log .warn{ color:#ffe3a7; }
-    .player{ display:flex; flex-direction:column; gap:10px; }
     audio{ width:100%; }
     .small{ font-size:12px; color:var(--muted); }
   </style>
@@ -206,6 +178,10 @@
           <button class="btn secondary" id="btnCopyLink" disabled>Copy Link</button>
         </div>
 
+        <div class="row">
+          <button class="btn secondary" id="btnRequestConnect" disabled>Request Host Connect</button>
+        </div>
+
         <div class="hr"></div>
 
         <div class="row">
@@ -216,7 +192,7 @@
         </div>
 
         <div class="hint">
-          Host selects MP3 → link opens on listeners → MP3 is sent P2P (no storage, no billing).
+          If B doesn’t receive audio: keep both devices on same Wi-Fi, then on B press “Request Host Connect”.
         </div>
 
         <div class="log mono" id="log"></div>
@@ -232,7 +208,7 @@
         <div class="badge" id="roleBadge">Role: —</div>
       </div>
 
-      <div class="content player">
+      <div class="content">
         <audio id="audio" controls preload="auto"></audio>
 
         <div class="row">
@@ -242,11 +218,11 @@
         </div>
 
         <div class="small mono">
-          Time offset (server): <span id="offsetMs">—</span> ms • Peers: <span id="peerCount">0</span>
+          Offset: <span id="offsetMs">—</span> ms • Peers: <span id="peerCount">0</span> • Last host: <span id="hostIdText">—</span>
         </div>
 
         <div class="hint">
-          Best “sounds together” results: keep all devices on the same Wi-Fi and don’t switch apps while testing.
+          Important: iPhone browsers often block auto-play. On device B, tap the audio controls once if asked.
         </div>
       </div>
     </div>
@@ -265,6 +241,7 @@
     logEl.appendChild(d);
     logEl.scrollTop = logEl.scrollHeight;
   }
+
   function randId(len=8){
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     let s = "";
@@ -275,16 +252,26 @@
 
   let ws = null;
   let myId = randId(10);
+
   let room = "";
   let isHost = false;
 
+  let hostId = "";
   let serverOffsetMs = 0;
   let pingInterval = null;
 
   const pcs = new Map();
   const dataCh = new Map();
   const fileRx = new Map();
-  const iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
+
+  // More STUN servers (helps NAT scenarios)
+  const iceServers = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" }
+  ];
 
   let hostFileMeta = null;
   let hostFileArrayBuffer = null;
@@ -293,11 +280,13 @@
   const roleBadge = $("roleBadge");
   const peerCountEl = $("peerCount");
   const offsetMsEl = $("offsetMs");
+  const hostIdText = $("hostIdText");
 
   const btnConnect = $("btnConnect");
   const btnCreateRoom = $("btnCreateRoom");
   const btnJoinRoom = $("btnJoinRoom");
   const btnCopyLink = $("btnCopyLink");
+  const btnRequestConnect = $("btnRequestConnect");
 
   const btnPlay = $("btnPlay");
   const btnPause = $("btnPause");
@@ -316,6 +305,7 @@
   function setRole(text){ roleBadge.textContent = "Role: " + text; }
   function updatePeerCount(){ peerCountEl.textContent = String(pcs.size); }
   function updateOffsetLabel(){ offsetMsEl.textContent = String(Math.round(serverOffsetMs)); }
+  function updateHostLabel(){ hostIdText.textContent = hostId || "—"; }
 
   function enableAfterConnect(enabled){
     btnCreateRoom.disabled = !enabled;
@@ -341,11 +331,11 @@
     if (!ws || ws.readyState !== 1) return;
     ws.send(JSON.stringify(obj));
   }
+
   function startPinging(){
     stopPinging();
     pingInterval = setInterval(() => {
-      const t0 = nowMs();
-      wsSend({ type:"ping", t0 });
+      wsSend({ type:"ping", t0: nowMs() });
     }, 2000);
   }
   function stopPinging(){
@@ -364,6 +354,9 @@
 
     pc.onconnectionstatechange = () => {
       log(`RTC(${peerId}) state: ${pc.connectionState}`, pc.connectionState === "connected" ? "ok" : "warn");
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        log(`RTC(${peerId}) hint: try same Wi-Fi or press "Request Host Connect"`, "warn");
+      }
     };
 
     pc.ondatachannel = (e) => bindDataChannel(peerId, e.channel);
@@ -377,11 +370,11 @@
     dataCh.set(peerId, ch);
     ch.binaryType = "arraybuffer";
 
-    ch.onopen = () => {
+    ch.onopen = async () => {
       log(`DataChannel open with ${peerId}`, "ok");
       if (isHost && hostFileMeta) {
         sendFileMeta(peerId);
-        sendFileData(peerId);
+        await sendFileData(peerId);
       } else if (!isHost) {
         ch.send(JSON.stringify({ kind:"need_file" }));
       }
@@ -393,8 +386,8 @@
       if (typeof ev.data === "string") {
         const msg = JSON.parse(ev.data);
         if (msg.kind === "file_meta") {
-          fileRx.set(peerId, { chunks: [], receivedBytes: 0, totalBytes: msg.size, mime: msg.type, name: msg.name });
-          log(`Receiving "${msg.name}" (${msg.size} bytes) ...`, "ok");
+          fileRx.set(peerId, { chunks: [], mime: msg.type, name: msg.name });
+          log(`Receiving "${msg.name}"...`, "ok");
         } else if (msg.kind === "file_end") {
           const state = fileRx.get(peerId);
           if (!state) return;
@@ -415,7 +408,6 @@
         const state = fileRx.get(peerId);
         if (!state) return;
         state.chunks.push(ev.data);
-        state.receivedBytes += ev.data.byteLength;
       }
     };
   }
@@ -553,6 +545,16 @@
     });
   }
 
+  // NEW: listener explicitly asks host to start connection
+  function requestHostOffer(){
+    if (!room || !hostId || hostId === myId) {
+      log("No host known yet. Join room first.", "warn");
+      return;
+    }
+    log("Requesting host to connect...", "ok");
+    wsSend({ type:"relay", room, to: hostId, from: myId, payload: { kind:"please_offer" } });
+  }
+
   btnConnect.onclick = () => {
     const url = wsUrlInput.value.trim();
     if (!url) { alert("WS URL missing"); return; }
@@ -569,12 +571,18 @@
       wsSend({ type:"hello", id: myId });
       startPinging();
       log("WebSocket connected.", "ok");
+
+      // If opened from shared link, auto-fill room
+      const urlRoom = getRoomFromUrl();
+      if (urlRoom) roomIdInput.value = urlRoom;
     };
 
     ws.onclose = () => {
       setStatus("Disconnected", false);
       btnConnect.disabled = false;
       enableAfterConnect(false);
+      btnCopyLink.disabled = true;
+      btnRequestConnect.disabled = true;
       stopPinging();
       log("WebSocket disconnected.", "warn");
     };
@@ -585,15 +593,15 @@
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
 
+      if (msg.type === "error") {
+        log("SERVER ERROR: " + (msg.message || "unknown"), "err");
+        return;
+      }
+
       if (msg.type === "hello_ack") {
         serverOffsetMs = (msg.serverNow || 0) - nowMs();
         updateOffsetLabel();
-
-        const urlRoom = getRoomFromUrl();
-        if (urlRoom) {
-          roomIdInput.value = urlRoom;
-          room = urlRoom;
-        }
+        log("Handshake OK.", "ok");
         return;
       }
 
@@ -613,6 +621,8 @@
         setLinkInUrl(room);
         btnCopyLink.disabled = false;
         isHost = true;
+        hostId = myId;
+        updateHostLabel();
         setRole("Host");
         log(`Room created: ${room}`, "ok");
         return;
@@ -624,9 +634,21 @@
         setLinkInUrl(room);
         btnCopyLink.disabled = false;
 
-        isHost = (msg.hostId === myId);
+        hostId = msg.hostId || "";
+        updateHostLabel();
+
+        isHost = (hostId === myId);
         setRole(isHost ? "Host" : "Listener");
-        log(`Joined room: ${room}`, "ok");
+        log(`Joined room: ${room} (host=${hostId})`, "ok");
+
+        btnRequestConnect.disabled = isHost ? true : false;
+
+        // Immediately ask host to connect (fix for missed peer_joined)
+        if (!isHost) {
+          setTimeout(requestHostOffer, 300);
+          setTimeout(requestHostOffer, 1500);
+        }
+
         return;
       }
 
@@ -646,6 +668,15 @@
       if (msg.type === "relay") {
         const from = msg.from;
         const payload = msg.payload || {};
+
+        if (payload.kind === "please_offer") {
+          // Host receives explicit request from listener
+          if (isHost) {
+            log(`Listener ${from} requested offer`, "ok");
+            await createOffer(from);
+          }
+          return;
+        }
 
         if (payload.kind === "offer") { await handleOffer(from, payload.sdp); return; }
         if (payload.kind === "answer") { await handleAnswer(from, payload.sdp); return; }
@@ -684,6 +715,8 @@
     }
   };
 
+  btnRequestConnect.onclick = () => requestHostOffer();
+
   fileInput.onchange = async () => {
     if (!fileInput.files || !fileInput.files[0]) return;
     const f = fileInput.files[0];
@@ -696,13 +729,14 @@
     audio.src = url;
     audio.load();
     enablePlayerControls();
-    log(`Loaded MP3: ${f.name}`, "ok");
+    log(`Loaded MP3 (host): ${f.name}`, "ok");
 
     if (!isHost) {
-      log("You are not Host. Host should choose the MP3.", "warn");
+      log("You are Listener. Only Host should choose MP3.", "warn");
       return;
     }
 
+    // push file to any open peers
     for (const [peerId, ch] of dataCh.entries()) {
       if (ch.readyState === "open") {
         sendFileMeta(peerId);
@@ -717,12 +751,14 @@
 
   audio.addEventListener("seeked", () => { if (isHost) hostResync(); });
 
+  // Initial UI
   const urlRoom = getRoomFromUrl();
   if (urlRoom) roomIdInput.value = urlRoom;
 
   setStatus("Disconnected", false);
   setRole("—");
   updatePeerCount();
+  updateHostLabel();
 })();
 </script>
 </body>
