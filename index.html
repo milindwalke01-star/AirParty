@@ -131,8 +131,8 @@
       border:1px solid rgba(255,255,255,.08);
       border-radius:14px;
       padding:12px;
-      min-height:140px;
-      max-height:260px;
+      min-height:150px;
+      max-height:280px;
       overflow:auto;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
     }
@@ -180,6 +180,7 @@
 
         <div class="row">
           <button class="btn secondary" id="btnRequestConnect" disabled>Request Host Connect</button>
+          <button class="btn secondary" id="btnReconnectNow" disabled>Reconnect Now</button>
         </div>
 
         <div class="hr"></div>
@@ -192,7 +193,7 @@
         </div>
 
         <div class="hint">
-          If B doesn’t receive audio: keep both devices on same Wi-Fi, then on B press “Request Host Connect”.
+          If sockets drop (Render restart/deploy), this page auto-reconnects and re-joins the room.
         </div>
 
         <div class="log mono" id="log"></div>
@@ -218,11 +219,11 @@
         </div>
 
         <div class="small mono">
-          Offset: <span id="offsetMs">—</span> ms • Peers: <span id="peerCount">0</span> • Last host: <span id="hostIdText">—</span>
+          Offset: <span id="offsetMs">—</span> ms • Peers: <span id="peerCount">0</span> • Host: <span id="hostIdText">—</span> • Mode: <span id="modeText">—</span>
         </div>
 
         <div class="hint">
-          Important: iPhone browsers often block auto-play. On device B, tap the audio controls once if asked.
+          iPhone: if you see an audio play block, tap the player once.
         </div>
       </div>
     </div>
@@ -254,17 +255,20 @@
   let myId = randId(10);
 
   let room = "";
-  let isHost = false;
-
+  let mode = "none"; // "host" | "listener" | "none"
   let hostId = "";
+
   let serverOffsetMs = 0;
   let pingInterval = null;
+
+  let reconnectTimer = null;
+  let reconnectAttempt = 0;
+  let wantConnected = false;
 
   const pcs = new Map();
   const dataCh = new Map();
   const fileRx = new Map();
 
-  // More STUN servers (helps NAT scenarios)
   const iceServers = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -281,12 +285,14 @@
   const peerCountEl = $("peerCount");
   const offsetMsEl = $("offsetMs");
   const hostIdText = $("hostIdText");
+  const modeText = $("modeText");
 
   const btnConnect = $("btnConnect");
   const btnCreateRoom = $("btnCreateRoom");
   const btnJoinRoom = $("btnJoinRoom");
   const btnCopyLink = $("btnCopyLink");
   const btnRequestConnect = $("btnRequestConnect");
+  const btnReconnectNow = $("btnReconnectNow");
 
   const btnPlay = $("btnPlay");
   const btnPause = $("btnPause");
@@ -306,10 +312,12 @@
   function updatePeerCount(){ peerCountEl.textContent = String(pcs.size); }
   function updateOffsetLabel(){ offsetMsEl.textContent = String(Math.round(serverOffsetMs)); }
   function updateHostLabel(){ hostIdText.textContent = hostId || "—"; }
+  function updateModeLabel(){ modeText.textContent = mode; }
 
   function enableAfterConnect(enabled){
     btnCreateRoom.disabled = !enabled;
     btnJoinRoom.disabled = !enabled;
+    btnReconnectNow.disabled = !enabled;
   }
   function enablePlayerControls(){
     const ready = !!audio.src;
@@ -317,6 +325,7 @@
     btnPause.disabled = !ready;
     btnSync.disabled = !ready;
   }
+
   function setLinkInUrl(roomId){
     const u = new URL(window.location.href);
     u.searchParams.set("room", roomId);
@@ -343,6 +352,206 @@
     pingInterval = null;
   }
 
+  function hardCloseAllPeers(){
+    for (const [pid, pc] of pcs.entries()) {
+      try { pc.close(); } catch {}
+    }
+    pcs.clear();
+    dataCh.clear();
+    fileRx.clear();
+    updatePeerCount();
+  }
+
+  function scheduleReconnect(){
+    if (!wantConnected) return;
+    if (reconnectTimer) return;
+
+    reconnectAttempt += 1;
+    const delay = Math.min(12000, 700 + reconnectAttempt * 900);
+
+    log(`Reconnecting in ${delay}ms...`, "warn");
+    setStatus("Reconnecting...", false);
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectSocket(true);
+    }, delay);
+  }
+
+  function connectSocket(isAuto=false){
+    const url = wsUrlInput.value.trim();
+    if (!url) { alert("WS URL missing"); return; }
+
+    try {
+      if (ws) { try { ws.close(); } catch {} }
+      ws = new WebSocket(url);
+    } catch {
+      log("WebSocket creation failed", "err");
+      scheduleReconnect();
+      return;
+    }
+
+    setStatus(isAuto ? "Reconnecting..." : "Connecting...", false);
+    btnConnect.disabled = true;
+
+    ws.onopen = () => {
+      reconnectAttempt = 0;
+      setStatus("Connected", true);
+      enableAfterConnect(true);
+      startPinging();
+      log("WebSocket connected.", "ok");
+
+      wsSend({ type:"hello", id: myId });
+
+      // Auto re-join / re-create after reconnect
+      setTimeout(() => {
+        if (!room) room = roomIdInput.value.trim() || getRoomFromUrl();
+        if (!room) return;
+
+        if (mode === "host") {
+          wsSend({ type:"create_room", room, id: myId });
+          log("Auto: re-create room as Host", "ok");
+        } else if (mode === "listener") {
+          wsSend({ type:"join_room", room, id: myId });
+          log("Auto: re-join room as Listener", "ok");
+        }
+      }, 200);
+    };
+
+    ws.onerror = () => {
+      log("WebSocket error.", "err");
+    };
+
+    ws.onclose = () => {
+      setStatus("Disconnected", false);
+      btnConnect.disabled = false;
+      enableAfterConnect(false);
+      btnCopyLink.disabled = true;
+      btnRequestConnect.disabled = true;
+      stopPinging();
+
+      hardCloseAllPeers();
+
+      log("WebSocket disconnected.", "warn");
+      scheduleReconnect();
+    };
+
+    ws.onmessage = async (ev) => {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch { return; }
+
+      if (msg.type === "error") {
+        log("SERVER ERROR: " + (msg.message || "unknown"), "err");
+        return;
+      }
+
+      if (msg.type === "hello_ack") {
+        serverOffsetMs = (msg.serverNow || 0) - nowMs();
+        updateOffsetLabel();
+        log("Handshake OK.", "ok");
+        return;
+      }
+
+      if (msg.type === "pong") {
+        const t0 = msg.t0;
+        const t1 = nowMs();
+        const rtt = (t1 - t0);
+        const approxServerAtT1 = (msg.serverNow || 0) + (rtt/2);
+        serverOffsetMs = approxServerAtT1 - t1;
+        updateOffsetLabel();
+        return;
+      }
+
+      if (msg.type === "host_update") {
+        hostId = msg.hostId || "";
+        updateHostLabel();
+        return;
+      }
+
+      if (msg.type === "room_created") {
+        room = msg.room;
+        roomIdInput.value = room;
+        setLinkInUrl(room);
+        btnCopyLink.disabled = false;
+
+        mode = "host";
+        updateModeLabel();
+
+        hostId = myId;
+        updateHostLabel();
+
+        setRole("Host");
+        log(`Room created: ${room}`, "ok");
+        return;
+      }
+
+      if (msg.type === "room_joined") {
+        room = msg.room;
+        roomIdInput.value = room;
+        setLinkInUrl(room);
+        btnCopyLink.disabled = false;
+
+        hostId = msg.hostId || "";
+        updateHostLabel();
+
+        if (mode !== "host") mode = "listener";
+        updateModeLabel();
+
+        setRole(hostId === myId ? "Host" : "Listener");
+        btnRequestConnect.disabled = (hostId === myId);
+
+        log(`Joined room: ${room} (host=${hostId || "?"})`, "ok");
+
+        if (hostId && hostId !== myId) {
+          setTimeout(requestHostOffer, 300);
+          setTimeout(requestHostOffer, 1500);
+        }
+        return;
+      }
+
+      if (msg.type === "peer_joined") {
+        const peerId = msg.peerId;
+        log(`Peer joined: ${peerId}`, "ok");
+        if (mode === "host") await createOffer(peerId);
+        return;
+      }
+
+      if (msg.type === "peer_left") {
+        closePeer(msg.peerId);
+        log(`Peer left: ${msg.peerId}`, "warn");
+        return;
+      }
+
+      if (msg.type === "relay") {
+        const from = msg.from;
+        const payload = msg.payload || {};
+
+        if (payload.kind === "please_offer") {
+          if (mode === "host") {
+            log(`Listener ${from} requested offer`, "ok");
+            await createOffer(from);
+          }
+          return;
+        }
+
+        if (payload.kind === "offer") { await handleOffer(from, payload.sdp); return; }
+        if (payload.kind === "answer") { await handleAnswer(from, payload.sdp); return; }
+        if (payload.kind === "ice") { await handleIce(from, payload.candidate); return; }
+        if (payload.kind === "sync") { if (mode !== "host") listenerApplySync(payload); return; }
+      }
+    };
+  }
+
+  function requestHostOffer(){
+    if (!room) room = roomIdInput.value.trim() || getRoomFromUrl();
+    if (!room || !hostId || hostId === myId) {
+      log("No host known yet. Join room first.", "warn");
+      return;
+    }
+    log("Requesting host to connect...", "ok");
+    wsSend({ type:"relay", room, to: hostId, from: myId, payload: { kind:"please_offer" } });
+  }
+
   function makePC(peerId){
     const pc = new RTCPeerConnection({ iceServers });
 
@@ -354,9 +563,6 @@
 
     pc.onconnectionstatechange = () => {
       log(`RTC(${peerId}) state: ${pc.connectionState}`, pc.connectionState === "connected" ? "ok" : "warn");
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        log(`RTC(${peerId}) hint: try same Wi-Fi or press "Request Host Connect"`, "warn");
-      }
     };
 
     pc.ondatachannel = (e) => bindDataChannel(peerId, e.channel);
@@ -372,10 +578,10 @@
 
     ch.onopen = async () => {
       log(`DataChannel open with ${peerId}`, "ok");
-      if (isHost && hostFileMeta) {
+      if (mode === "host" && hostFileMeta) {
         sendFileMeta(peerId);
         await sendFileData(peerId);
-      } else if (!isHost) {
+      } else if (mode === "listener") {
         ch.send(JSON.stringify({ kind:"need_file" }));
       }
     };
@@ -399,7 +605,7 @@
           log(`MP3 ready: ${state.name}`, "ok");
           fileRx.delete(peerId);
         } else if (msg.kind === "need_file") {
-          if (isHost && hostFileMeta) {
+          if (mode === "host" && hostFileMeta) {
             sendFileMeta(peerId);
             await sendFileData(peerId);
           }
@@ -545,174 +751,45 @@
     });
   }
 
-  // NEW: listener explicitly asks host to start connection
-  function requestHostOffer(){
-    if (!room || !hostId || hostId === myId) {
-      log("No host known yet. Join room first.", "warn");
-      return;
-    }
-    log("Requesting host to connect...", "ok");
-    wsSend({ type:"relay", room, to: hostId, from: myId, payload: { kind:"please_offer" } });
-  }
-
   btnConnect.onclick = () => {
-    const url = wsUrlInput.value.trim();
-    if (!url) { alert("WS URL missing"); return; }
+    wantConnected = true;
+    connectSocket(false);
+  };
 
-    try { ws = new WebSocket(url); }
-    catch { alert("Invalid WS URL"); return; }
-
-    setStatus("Connecting...", false);
-    btnConnect.disabled = true;
-
-    ws.onopen = () => {
-      setStatus("Connected", true);
-      enableAfterConnect(true);
-      wsSend({ type:"hello", id: myId });
-      startPinging();
-      log("WebSocket connected.", "ok");
-
-      // If opened from shared link, auto-fill room
-      const urlRoom = getRoomFromUrl();
-      if (urlRoom) roomIdInput.value = urlRoom;
-    };
-
-    ws.onclose = () => {
-      setStatus("Disconnected", false);
-      btnConnect.disabled = false;
-      enableAfterConnect(false);
-      btnCopyLink.disabled = true;
-      btnRequestConnect.disabled = true;
-      stopPinging();
-      log("WebSocket disconnected.", "warn");
-    };
-
-    ws.onerror = () => log("WebSocket error.", "err");
-
-    ws.onmessage = async (ev) => {
-      let msg;
-      try { msg = JSON.parse(ev.data); } catch { return; }
-
-      if (msg.type === "error") {
-        log("SERVER ERROR: " + (msg.message || "unknown"), "err");
-        return;
-      }
-
-      if (msg.type === "hello_ack") {
-        serverOffsetMs = (msg.serverNow || 0) - nowMs();
-        updateOffsetLabel();
-        log("Handshake OK.", "ok");
-        return;
-      }
-
-      if (msg.type === "pong") {
-        const t0 = msg.t0;
-        const t1 = nowMs();
-        const rtt = (t1 - t0);
-        const approxServerAtT1 = (msg.serverNow || 0) + (rtt/2);
-        serverOffsetMs = approxServerAtT1 - t1;
-        updateOffsetLabel();
-        return;
-      }
-
-      if (msg.type === "room_created") {
-        room = msg.room;
-        roomIdInput.value = room;
-        setLinkInUrl(room);
-        btnCopyLink.disabled = false;
-        isHost = true;
-        hostId = myId;
-        updateHostLabel();
-        setRole("Host");
-        log(`Room created: ${room}`, "ok");
-        return;
-      }
-
-      if (msg.type === "room_joined") {
-        room = msg.room;
-        roomIdInput.value = room;
-        setLinkInUrl(room);
-        btnCopyLink.disabled = false;
-
-        hostId = msg.hostId || "";
-        updateHostLabel();
-
-        isHost = (hostId === myId);
-        setRole(isHost ? "Host" : "Listener");
-        log(`Joined room: ${room} (host=${hostId})`, "ok");
-
-        btnRequestConnect.disabled = isHost ? true : false;
-
-        // Immediately ask host to connect (fix for missed peer_joined)
-        if (!isHost) {
-          setTimeout(requestHostOffer, 300);
-          setTimeout(requestHostOffer, 1500);
-        }
-
-        return;
-      }
-
-      if (msg.type === "peer_joined") {
-        const peerId = msg.peerId;
-        log(`Peer joined: ${peerId}`, "ok");
-        if (isHost) await createOffer(peerId);
-        return;
-      }
-
-      if (msg.type === "peer_left") {
-        closePeer(msg.peerId);
-        log(`Peer left: ${msg.peerId}`, "warn");
-        return;
-      }
-
-      if (msg.type === "relay") {
-        const from = msg.from;
-        const payload = msg.payload || {};
-
-        if (payload.kind === "please_offer") {
-          // Host receives explicit request from listener
-          if (isHost) {
-            log(`Listener ${from} requested offer`, "ok");
-            await createOffer(from);
-          }
-          return;
-        }
-
-        if (payload.kind === "offer") { await handleOffer(from, payload.sdp); return; }
-        if (payload.kind === "answer") { await handleAnswer(from, payload.sdp); return; }
-        if (payload.kind === "ice") { await handleIce(from, payload.candidate); return; }
-        if (payload.kind === "sync") { if (!isHost) listenerApplySync(payload); return; }
-      }
-    };
+  btnReconnectNow.onclick = () => {
+    wantConnected = true;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    connectSocket(true);
   };
 
   btnCreateRoom.onclick = () => {
-    isHost = true;
+    if (!ws || ws.readyState !== 1) return;
+    mode = "host"; updateModeLabel();
     setRole("Host");
+
     room = randId(6);
     roomIdInput.value = room;
+
     wsSend({ type:"create_room", room, id: myId });
   };
 
   btnJoinRoom.onclick = () => {
-    const r = roomIdInput.value.trim() || getRoomFromUrl();
-    if (!r) { alert("Paste Room ID or open a link with ?room=xxxxxx"); return; }
-    room = r;
-    wsSend({ type:"join_room", room, id: myId });
-    isHost = false;
+    if (!ws || ws.readyState !== 1) return;
+    mode = "listener"; updateModeLabel();
     setRole("Listener");
+
+    room = roomIdInput.value.trim() || getRoomFromUrl();
+    if (!room) return;
+
+    wsSend({ type:"join_room", room, id: myId });
   };
 
   btnCopyLink.onclick = async () => {
     if (!room) return;
     const u = new URL(window.location.href);
     u.searchParams.set("room", room);
-    try {
-      await navigator.clipboard.writeText(u.toString());
-      log("Link copied.", "ok");
-    } catch {
-      alert(u.toString());
-    }
+    try { await navigator.clipboard.writeText(u.toString()); log("Link copied.", "ok"); }
+    catch { alert(u.toString()); }
   };
 
   btnRequestConnect.onclick = () => requestHostOffer();
@@ -720,7 +797,7 @@
   fileInput.onchange = async () => {
     if (!fileInput.files || !fileInput.files[0]) return;
     const f = fileInput.files[0];
-    if (!f.type.includes("audio")) { alert("Choose an audio/MP3 file"); return; }
+    if (!f.type.includes("audio")) return;
 
     hostFileMeta = { name: f.name, type: f.type || "audio/mpeg", size: f.size };
     hostFileArrayBuffer = await f.arrayBuffer();
@@ -731,12 +808,8 @@
     enablePlayerControls();
     log(`Loaded MP3 (host): ${f.name}`, "ok");
 
-    if (!isHost) {
-      log("You are Listener. Only Host should choose MP3.", "warn");
-      return;
-    }
+    if (mode !== "host") { log("Only Host should choose MP3.", "warn"); return; }
 
-    // push file to any open peers
     for (const [peerId, ch] of dataCh.entries()) {
       if (ch.readyState === "open") {
         sendFileMeta(peerId);
@@ -745,11 +818,11 @@
     }
   };
 
-  btnPlay.onclick = () => { if (isHost) hostPlay(); else log("Only Host controls Play/Pause.", "warn"); };
-  btnPause.onclick = () => { if (isHost) hostPause(); else log("Only Host controls Play/Pause.", "warn"); };
-  btnSync.onclick = () => { if (isHost) hostResync(); else log("Only Host can resync.", "warn"); };
+  btnPlay.onclick = () => { if (mode === "host") hostPlay(); else log("Only Host controls Play/Pause.", "warn"); };
+  btnPause.onclick = () => { if (mode === "host") hostPause(); else log("Only Host controls Play/Pause.", "warn"); };
+  btnSync.onclick = () => { if (mode === "host") hostResync(); else log("Only Host can resync.", "warn"); };
 
-  audio.addEventListener("seeked", () => { if (isHost) hostResync(); });
+  audio.addEventListener("seeked", () => { if (mode === "host") hostResync(); });
 
   // Initial UI
   const urlRoom = getRoomFromUrl();
@@ -759,6 +832,17 @@
   setRole("—");
   updatePeerCount();
   updateHostLabel();
+  updateModeLabel();
+
+  // Auto-connect if opened via shared link
+  if (getRoomFromUrl()) {
+    wantConnected = true;
+    connectSocket(true);
+  }
+
+  // Enable request button only after join/host update
+  const origSetRole = setRole;
+  setRole = (...args) => origSetRole(...args);
 })();
 </script>
 </body>
