@@ -15,27 +15,19 @@
       --muted:#b9b9b9;
       --stroke:#2a2a2e;
       --shadow: rgba(0,0,0,.65);
-      --shine: rgba(255,255,255,.06);
     }
-
     *{box-sizing:border-box}
     body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      margin:0; min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
+      padding:18px;
       background:
         radial-gradient(1200px 700px at 20% 20%, rgba(255,43,43,.10), transparent 55%),
         radial-gradient(900px 600px at 80% 40%, rgba(255,43,43,.08), transparent 55%),
-        radial-gradient(1200px 900px at 50% 90%, rgba(255,43,43,.06), transparent 60%),
         linear-gradient(180deg, #050505, #080808 55%, #050505);
       color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      padding:18px;
     }
-
-    /* rubber-ish texture */
     body:before{
       content:"";
       position:fixed; inset:0;
@@ -45,17 +37,13 @@
       opacity:.35;
       pointer-events:none;
     }
-
     .wrap{
       width:min(980px, 100%);
       display:grid;
       grid-template-columns: 1.05fr .95fr;
       gap:16px;
     }
-    @media (max-width:860px){
-      .wrap{grid-template-columns:1fr}
-    }
-
+    @media (max-width:860px){ .wrap{grid-template-columns:1fr} }
     .card{
       background:
         radial-gradient(900px 500px at 20% 10%, rgba(255,255,255,.05), transparent 55%),
@@ -67,8 +55,7 @@
         inset 0 1px 0 rgba(255,255,255,.06);
       overflow:hidden;
     }
-
-    .card .head{
+    .head{
       padding:18px 18px 14px 18px;
       border-bottom:1px solid rgba(255,255,255,.06);
       display:flex;
@@ -76,9 +63,7 @@
       justify-content:space-between;
       gap:12px;
     }
-    .brand{
-      display:flex; flex-direction:column; gap:3px;
-    }
+    .brand{ display:flex; flex-direction:column; gap:3px; }
     .brand h1{
       margin:0;
       font-size:18px;
@@ -92,12 +77,7 @@
       background:var(--red);
       box-shadow: 0 0 0 4px rgba(255,43,43,.10), 0 0 18px rgba(255,43,43,.55);
     }
-    .brand .sub{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.2;
-    }
-
+    .brand .sub{ color:var(--muted); font-size:12px; line-height:1.2; }
     .badge{
       font-size:12px;
       color: #ffd7d7;
@@ -108,11 +88,8 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
       white-space:nowrap;
     }
-
     .content{ padding:18px; display:flex; flex-direction:column; gap:14px; }
-
     .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-
     .field{
       flex:1 1 260px;
       display:flex;
@@ -121,8 +98,7 @@
       padding:12px 12px;
       border-radius:14px;
       border:1px solid rgba(255,255,255,.08);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.05),
         inset 0 -10px 25px rgba(0,0,0,.35);
@@ -138,12 +114,7 @@
       font-size:14px;
     }
     .field input::placeholder{ color: rgba(243,243,243,.35); }
-
-    input[type="file"]{
-      width:100%;
-      color:var(--muted);
-    }
-
+    input[type="file"]{ width:100%; color:var(--muted); }
     .btn{
       border:1px solid rgba(255,43,43,.30);
       background:
@@ -175,23 +146,13 @@
         inset 0 1px 0 rgba(255,255,255,.08),
         inset 0 -10px 16px rgba(0,0,0,.30);
     }
-    .btn:disabled{
-      opacity:.45; cursor:not-allowed; transform:none;
-    }
-
-    .hint{
-      color: var(--muted);
-      font-size:12px;
-      line-height:1.35;
-    }
-
+    .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+    .hint{ color: var(--muted); font-size:12px; line-height:1.35; }
     .hr{ height:1px; background: rgba(255,255,255,.06); margin:2px 0; }
-
     .mono{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size:12px;
     }
-
     .log{
       background: rgba(0,0,0,.35);
       border:1px solid rgba(255,255,255,.08);
@@ -206,22 +167,14 @@
     .log .err{ color:#ffb0b0; }
     .log .ok{ color:#b9ffcd; }
     .log .warn{ color:#ffe3a7; }
-
-    .player{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
+    .player{ display:flex; flex-direction:column; gap:10px; }
     audio{ width:100%; }
-    .small{
-      font-size:12px; color:var(--muted);
-    }
+    .small{ font-size:12px; color:var(--muted); }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <!-- LEFT: Room + Upload -->
     <div class="card">
       <div class="head">
         <div class="brand">
@@ -235,7 +188,7 @@
         <div class="row">
           <div class="field">
             <label>WS Server</label>
-            <input id="wsUrl" type="url" placeholder="Paste your backend wss://.../ws" />
+            <input id="wsUrl" type="url" value="wss://airparty-backend-9url.onrender.com/ws" />
           </div>
           <button class="btn secondary" id="btnConnect">Connect</button>
         </div>
@@ -263,19 +216,18 @@
         </div>
 
         <div class="hint">
-          Host selects an MP3 → joins generate the same link → host sends the MP3 directly to listeners (no storage, no billing).
+          Host selects MP3 → link opens on listeners → MP3 is sent P2P (no storage, no billing).
         </div>
 
         <div class="log mono" id="log"></div>
       </div>
     </div>
 
-    <!-- RIGHT: Player + Controls -->
     <div class="card">
       <div class="head">
         <div class="brand">
           <h1>Player</h1>
-          <div class="sub">Start/Stop/Seek sync (human-ear tight)</div>
+          <div class="sub">Start/Stop sync (human-ear tight)</div>
         </div>
         <div class="badge" id="roleBadge">Role: —</div>
       </div>
@@ -294,7 +246,7 @@
         </div>
 
         <div class="hint">
-          Notes: For “sounds together” sync, we schedule Play/Pause at a shared server-time target and correct drift with small seeks.
+          Best “sounds together” results: keep all devices on the same Wi-Fi and don’t switch apps while testing.
         </div>
       </div>
     </div>
@@ -302,7 +254,6 @@
 
 <script>
 (() => {
-  // ========= Utilities =========
   const $ = (id) => document.getElementById(id);
   const logEl = $("log");
   const audio = $("audio");
@@ -314,39 +265,30 @@
     logEl.appendChild(d);
     logEl.scrollTop = logEl.scrollHeight;
   }
-
   function randId(len=8){
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     let s = "";
     for (let i=0;i<len;i++) s += chars[Math.floor(Math.random()*chars.length)];
     return s;
   }
+  const nowMs = () => Date.now();
 
-  function nowMs(){ return Date.now(); }
-
-  // ========= State =========
   let ws = null;
   let myId = randId(10);
   let room = "";
   let isHost = false;
 
-  // time sync
-  let serverOffsetMs = 0; // serverNow - localNow
-  let lastPingSentAt = 0;
+  let serverOffsetMs = 0;
   let pingInterval = null;
 
-  // WebRTC
-  const pcs = new Map();              // peerId -> RTCPeerConnection
-  const dataCh = new Map();           // peerId -> RTCDataChannel
-  const fileRx = new Map();           // peerId -> {chunks:[], totalBytes, receivedBytes, mime, name}
+  const pcs = new Map();
+  const dataCh = new Map();
+  const fileRx = new Map();
   const iceServers = [{ urls: "stun:stun.l.google.com:19302" }];
 
-  // Host file
-  let hostFile = null;
-  let hostFileMeta = null; // {name, type, size}
+  let hostFileMeta = null;
   let hostFileArrayBuffer = null;
 
-  // ========= UI =========
   const statusBadge = $("statusBadge");
   const roleBadge = $("roleBadge");
   const peerCountEl = $("peerCount");
@@ -371,65 +313,39 @@
     statusBadge.style.borderColor = ok ? "rgba(185,255,205,.25)" : "rgba(255,43,43,.25)";
     statusBadge.style.color = ok ? "#b9ffcd" : "#ffd7d7";
   }
-
-  function setRole(text){
-    roleBadge.textContent = "Role: " + text;
-  }
-
-  function updatePeerCount(){
-    peerCountEl.textContent = String(pcs.size);
-  }
+  function setRole(text){ roleBadge.textContent = "Role: " + text; }
+  function updatePeerCount(){ peerCountEl.textContent = String(pcs.size); }
+  function updateOffsetLabel(){ offsetMsEl.textContent = String(Math.round(serverOffsetMs)); }
 
   function enableAfterConnect(enabled){
     btnCreateRoom.disabled = !enabled;
     btnJoinRoom.disabled = !enabled;
   }
-
   function enablePlayerControls(){
-    const ready = (!!audio.src || audio.srcObject) && (isHost || !isHost);
+    const ready = !!audio.src;
     btnPlay.disabled = !ready;
     btnPause.disabled = !ready;
     btnSync.disabled = !ready;
   }
-
   function setLinkInUrl(roomId){
     const u = new URL(window.location.href);
     u.searchParams.set("room", roomId);
     history.replaceState({}, "", u.toString());
   }
-
   function getRoomFromUrl(){
     const u = new URL(window.location.href);
     return u.searchParams.get("room") || "";
   }
 
-  // ========= WebSocket Protocol =========
-  // Client -> Server:
-  // { type:"hello", id }
-  // { type:"create_room", room, id }
-  // { type:"join_room", room, id }
-  // { type:"relay", room, to, from, payload:{...} }   // signaling + sync
-  // { type:"ping", t0 }  // for time offset
-  //
-  // Server -> Client:
-  // { type:"hello_ack", serverNow, id }
-  // { type:"room_created", room }
-  // { type:"room_joined", room, hostId, peers:[...] }
-  // { type:"peer_joined", peerId }
-  // { type:"peer_left", peerId }
-  // { type:"relay", from, payload:{...}, serverNow }
-  // { type:"pong", t0, serverNow }
-
   function wsSend(obj){
     if (!ws || ws.readyState !== 1) return;
     ws.send(JSON.stringify(obj));
   }
-
   function startPinging(){
     stopPinging();
     pingInterval = setInterval(() => {
-      lastPingSentAt = nowMs();
-      wsSend({ type:"ping", t0: lastPingSentAt });
+      const t0 = nowMs();
+      wsSend({ type:"ping", t0 });
     }, 2000);
   }
   function stopPinging(){
@@ -437,13 +353,9 @@
     pingInterval = null;
   }
 
-  function updateOffsetLabel(){
-    offsetMsEl.textContent = String(Math.round(serverOffsetMs));
-  }
-
-  // ========= WebRTC Helpers =========
   function makePC(peerId){
     const pc = new RTCPeerConnection({ iceServers });
+
     pc.onicecandidate = (e) => {
       if (e.candidate) {
         wsSend({ type:"relay", room, to: peerId, from: myId, payload: { kind:"ice", candidate: e.candidate } });
@@ -454,10 +366,7 @@
       log(`RTC(${peerId}) state: ${pc.connectionState}`, pc.connectionState === "connected" ? "ok" : "warn");
     };
 
-    pc.ondatachannel = (e) => {
-      const ch = e.channel;
-      bindDataChannel(peerId, ch);
-    };
+    pc.ondatachannel = (e) => bindDataChannel(peerId, e.channel);
 
     pcs.set(peerId, pc);
     updatePeerCount();
@@ -470,12 +379,13 @@
 
     ch.onopen = () => {
       log(`DataChannel open with ${peerId}`, "ok");
-      // If host already has a file, push metadata prompt
       if (isHost && hostFileMeta) {
         sendFileMeta(peerId);
+        sendFileData(peerId);
+      } else if (!isHost) {
+        ch.send(JSON.stringify({ kind:"need_file" }));
       }
     };
-
     ch.onclose = () => log(`DataChannel closed with ${peerId}`, "warn");
     ch.onerror = () => log(`DataChannel error with ${peerId}`, "err");
 
@@ -483,7 +393,6 @@
       if (typeof ev.data === "string") {
         const msg = JSON.parse(ev.data);
         if (msg.kind === "file_meta") {
-          // listener received metadata
           fileRx.set(peerId, { chunks: [], receivedBytes: 0, totalBytes: msg.size, mime: msg.type, name: msg.name });
           log(`Receiving "${msg.name}" (${msg.size} bytes) ...`, "ok");
         } else if (msg.kind === "file_end") {
@@ -497,14 +406,12 @@
           log(`MP3 ready: ${state.name}`, "ok");
           fileRx.delete(peerId);
         } else if (msg.kind === "need_file") {
-          // listener asks host for file
           if (isHost && hostFileMeta) {
             sendFileMeta(peerId);
             await sendFileData(peerId);
           }
         }
       } else {
-        // binary chunk
         const state = fileRx.get(peerId);
         if (!state) return;
         state.chunks.push(ev.data);
@@ -534,7 +441,7 @@
       const slice = buf.slice(offset, offset + chunkSize);
       ch.send(slice);
       offset += chunkSize;
-      // flow control
+
       if (ch.bufferedAmount > 4 * 1024 * 1024) {
         await new Promise(r => setTimeout(r, 40));
       } else {
@@ -587,9 +494,6 @@
     updatePeerCount();
   }
 
-  // ========= Sync Controls =========
-  // We schedule actions at serverTimeTarget, clients convert to local time:
-  // localTarget = serverTimeTarget - serverOffsetMs
   function scheduleAtServerTime(serverTimeTarget, fn){
     const localTarget = serverTimeTarget - serverOffsetMs;
     const delay = Math.max(0, localTarget - nowMs());
@@ -597,15 +501,12 @@
   }
 
   function hostBroadcast(payload){
-    // relay to everyone in room (server will fan out)
     wsSend({ type:"relay", room, to:"*", from: myId, payload });
   }
 
   function hostPlay(){
-    // schedule ~700ms ahead
     const serverTimeTarget = (nowMs() + serverOffsetMs) + 700;
     const t = audio.currentTime || 0;
-
     hostBroadcast({ kind:"sync", action:"play", serverTimeTarget, atTime: t });
     scheduleAtServerTime(serverTimeTarget, () => {
       audio.currentTime = t;
@@ -616,7 +517,6 @@
   function hostPause(){
     const serverTimeTarget = (nowMs() + serverOffsetMs) + 350;
     const t = audio.currentTime || 0;
-
     hostBroadcast({ kind:"sync", action:"pause", serverTimeTarget, atTime: t });
     scheduleAtServerTime(serverTimeTarget, () => {
       audio.pause();
@@ -628,16 +528,13 @@
     const serverTimeTarget = (nowMs() + serverOffsetMs) + 350;
     const t = audio.currentTime || 0;
     const playing = !audio.paused;
-
     hostBroadcast({ kind:"sync", action:"resync", serverTimeTarget, atTime: t, playing });
   }
 
   function listenerApplySync(msg){
     const { action, serverTimeTarget, atTime, playing } = msg;
-
     scheduleAtServerTime(serverTimeTarget, async () => {
       try {
-        // tiny correction first (human-ear tight)
         const drift = Math.abs((audio.currentTime || 0) - (atTime || 0));
         if (drift > 0.08) audio.currentTime = atTime || 0;
 
@@ -652,21 +549,16 @@
           if (playing) await audio.play();
           else audio.pause();
         }
-      } catch (e) {}
+      } catch {}
     });
   }
 
-  // ========= Actions =========
   btnConnect.onclick = () => {
     const url = wsUrlInput.value.trim();
-    if (!url) { alert("Paste WS Server URL first (wss://.../ws)"); return; }
+    if (!url) { alert("WS URL missing"); return; }
 
-    try {
-      ws = new WebSocket(url);
-    } catch {
-      alert("Invalid WS URL");
-      return;
-    }
+    try { ws = new WebSocket(url); }
+    catch { alert("Invalid WS URL"); return; }
 
     setStatus("Connecting...", false);
     btnConnect.disabled = true;
@@ -687,25 +579,22 @@
       log("WebSocket disconnected.", "warn");
     };
 
-    ws.onerror = () => {
-      log("WebSocket error.", "err");
-    };
+    ws.onerror = () => log("WebSocket error.", "err");
 
     ws.onmessage = async (ev) => {
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
 
       if (msg.type === "hello_ack") {
-        // initialize offset from serverNow
         serverOffsetMs = (msg.serverNow || 0) - nowMs();
         updateOffsetLabel();
 
-        // auto room from URL if present
         const urlRoom = getRoomFromUrl();
         if (urlRoom) {
           roomIdInput.value = urlRoom;
           room = urlRoom;
         }
+        return;
       }
 
       if (msg.type === "pong") {
@@ -723,7 +612,6 @@
         roomIdInput.value = room;
         setLinkInUrl(room);
         btnCopyLink.disabled = false;
-
         isHost = true;
         setRole("Host");
         log(`Room created: ${room}`, "ok");
@@ -739,19 +627,13 @@
         isHost = (msg.hostId === myId);
         setRole(isHost ? "Host" : "Listener");
         log(`Joined room: ${room}`, "ok");
-
-        // If listener, request file from host after peer connect
         return;
       }
 
       if (msg.type === "peer_joined") {
         const peerId = msg.peerId;
         log(`Peer joined: ${peerId}`, "ok");
-
-        // Host initiates offer
-        if (isHost) {
-          await createOffer(peerId);
-        }
+        if (isHost) await createOffer(peerId);
         return;
       }
 
@@ -765,24 +647,10 @@
         const from = msg.from;
         const payload = msg.payload || {};
 
-        if (payload.kind === "offer") {
-          await handleOffer(from, payload.sdp);
-          return;
-        }
-        if (payload.kind === "answer") {
-          await handleAnswer(from, payload.sdp);
-          return;
-        }
-        if (payload.kind === "ice") {
-          await handleIce(from, payload.candidate);
-          return;
-        }
-        if (payload.kind === "sync") {
-          if (!isHost) listenerApplySync(payload);
-          return;
-        }
-
-        return;
+        if (payload.kind === "offer") { await handleOffer(from, payload.sdp); return; }
+        if (payload.kind === "answer") { await handleAnswer(from, payload.sdp); return; }
+        if (payload.kind === "ice") { await handleIce(from, payload.candidate); return; }
+        if (payload.kind === "sync") { if (!isHost) listenerApplySync(payload); return; }
       }
     };
   };
@@ -797,9 +665,10 @@
 
   btnJoinRoom.onclick = () => {
     const r = roomIdInput.value.trim() || getRoomFromUrl();
-    if (!r) { alert("Paste Room ID (or open a link with ?room=xxxxxx)"); return; }
+    if (!r) { alert("Paste Room ID or open a link with ?room=xxxxxx"); return; }
     room = r;
     wsSend({ type:"join_room", room, id: myId });
+    isHost = false;
     setRole("Listener");
   };
 
@@ -809,7 +678,7 @@
     u.searchParams.set("room", room);
     try {
       await navigator.clipboard.writeText(u.toString());
-      log("Link copied to clipboard.", "ok");
+      log("Link copied.", "ok");
     } catch {
       alert(u.toString());
     }
@@ -818,64 +687,38 @@
   fileInput.onchange = async () => {
     if (!fileInput.files || !fileInput.files[0]) return;
     const f = fileInput.files[0];
-    if (!f.type.includes("audio")) {
-      alert("Please choose an MP3/audio file.");
-      return;
-    }
+    if (!f.type.includes("audio")) { alert("Choose an audio/MP3 file"); return; }
 
-    hostFile = f;
     hostFileMeta = { name: f.name, type: f.type || "audio/mpeg", size: f.size };
-
     hostFileArrayBuffer = await f.arrayBuffer();
+
     const url = URL.createObjectURL(new Blob([hostFileArrayBuffer], { type: hostFileMeta.type }));
     audio.src = url;
     audio.load();
-
     enablePlayerControls();
-    log(`Loaded MP3 locally: ${f.name}`, "ok");
+    log(`Loaded MP3: ${f.name}`, "ok");
 
-    // If host, push file to any already-connected peers
-    if (isHost) {
-      for (const [peerId, ch] of dataCh.entries()) {
-        if (ch.readyState === "open") {
-          sendFileMeta(peerId);
-          await sendFileData(peerId);
-        }
-      }
-    } else {
-      // listener asks host for file (once any data channel exists)
-      for (const [peerId, ch] of dataCh.entries()) {
-        if (ch.readyState === "open") {
-          ch.send(JSON.stringify({ kind:"need_file" }));
-        }
+    if (!isHost) {
+      log("You are not Host. Host should choose the MP3.", "warn");
+      return;
+    }
+
+    for (const [peerId, ch] of dataCh.entries()) {
+      if (ch.readyState === "open") {
+        sendFileMeta(peerId);
+        await sendFileData(peerId);
       }
     }
   };
 
-  btnPlay.onclick = () => {
-    if (isHost) hostPlay();
-    else log("Only Host controls Play/Pause. (Host: press Play)", "warn");
-  };
+  btnPlay.onclick = () => { if (isHost) hostPlay(); else log("Only Host controls Play/Pause.", "warn"); };
+  btnPause.onclick = () => { if (isHost) hostPause(); else log("Only Host controls Play/Pause.", "warn"); };
+  btnSync.onclick = () => { if (isHost) hostResync(); else log("Only Host can resync.", "warn"); };
 
-  btnPause.onclick = () => {
-    if (isHost) hostPause();
-    else log("Only Host controls Play/Pause. (Host: press Pause)", "warn");
-  };
+  audio.addEventListener("seeked", () => { if (isHost) hostResync(); });
 
-  btnSync.onclick = () => {
-    if (isHost) hostResync();
-    else log("Host can resync everyone.", "warn");
-  };
-
-  // When user scrubs locally, host can resync everyone automatically (optional)
-  audio.addEventListener("seeked", () => {
-    if (isHost && !audio.paused) hostResync();
-    if (isHost && audio.paused) hostResync();
-  });
-
-  // Prepare for URL room auto-fill
-  const r = getRoomFromUrl();
-  if (r) roomIdInput.value = r;
+  const urlRoom = getRoomFromUrl();
+  if (urlRoom) roomIdInput.value = urlRoom;
 
   setStatus("Disconnected", false);
   setRole("—");
