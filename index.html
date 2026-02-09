@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirParty</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: red;
+            margin-bottom: 20px;
+        }
+        .form-container {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(255, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="file"], button {
+            margin: 10px 0;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #333;
+            color: white;
+            box-shadow: 0 4px 6px rgba(255, 0, 0, 0.4);
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(255, 0, 0, 0.5);
+        }
+        #share-link {
+            margin-top: 15px;
+            color: #ff5555;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <h1>AirParty</h1>
+    <div class="form-container">
+        <input type="file" id="mp3File" accept="audio/mp3">
+        <button id="uploadBtn">Upload & Get Link</button>
+        <div id="share-link"></div>
+    </div>
+
+    <script>
+        // For now, we just simulate the upload/link generation
+        document.getElementById('uploadBtn').onclick = function() {
+            const fileInput = document.getElementById('mp3File');
+            if (fileInput.files.length > 0) {
+                document.getElementById('share-link').innerText = 'This will be your shareable link (mocked for now).';
+            } else {
+                alert('Please select an MP3 file.');
+            }
+        };
+    </script>
+</body>
+</html>
+``
