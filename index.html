@@ -193,7 +193,7 @@
         </div>
 
         <div class="hint">
-          If sockets drop (Render restart/deploy), this page auto-reconnects and re-joins the room.
+          Sync upgrade: continuous drift correction (smooth) while playing.
         </div>
 
         <div class="log mono" id="log"></div>
@@ -204,7 +204,7 @@
       <div class="head">
         <div class="brand">
           <h1>Player</h1>
-          <div class="sub">Start/Stop sync (human-ear tight)</div>
+          <div class="sub">Tighter sync (ticks + drift correction)</div>
         </div>
         <div class="badge" id="roleBadge">Role: —</div>
       </div>
@@ -219,11 +219,11 @@
         </div>
 
         <div class="small mono">
-          Offset: <span id="offsetMs">—</span> ms • Peers: <span id="peerCount">0</span> • Host: <span id="hostIdText">—</span> • Mode: <span id="modeText">—</span>
+          Offset: <span id="offsetMs">—</span> ms • Peers: <span id="peerCount">0</span> • Host: <span id="hostIdText">—</span> • Mode: <span id="modeText">—</span> • Drift: <span id="driftMs">—</span> ms
         </div>
 
         <div class="hint">
-          iPhone: if you see an audio play block, tap the player once.
+          Best results: same Wi-Fi, volume similar, avoid Bluetooth on one device and speaker on another.
         </div>
       </div>
     </div>
@@ -258,6 +258,7 @@
   let mode = "none"; // "host" | "listener" | "none"
   let hostId = "";
 
+  // Smoothed offset estimator
   let serverOffsetMs = 0;
   let pingInterval = null;
 
@@ -286,6 +287,7 @@
   const offsetMsEl = $("offsetMs");
   const hostIdText = $("hostIdText");
   const modeText = $("modeText");
+  const driftMsEl = $("driftMs");
 
   const btnConnect = $("btnConnect");
   const btnCreateRoom = $("btnCreateRoom");
@@ -302,6 +304,19 @@
   const roomIdInput = $("roomId");
   const fileInput = $("mp3File");
 
+  // --------- Sync tuning knobs ----------
+  const START_LEAD_MS = 1400;        // schedule play further ahead for tighter start
+  const PAUSE_LEAD_MS = 450;
+  const TICK_EVERY_MS = 900;         // host sends ticks while playing
+  const SEEK_THRESHOLD_S = 0.180;    // if drift bigger than this, hard seek
+  const SOFT_THRESHOLD_S = 0.040;    // if drift bigger than this, adjust playbackRate
+  const MAX_RATE_DELTA = 0.03;       // +-3%
+  const RATE_RECOVER_S = 0.8;        // how fast rate correction reacts
+
+  let hostTickTimer = null;
+  let lastTick = null;              // on listener: last tick data to estimate drift
+  let driftS = 0;
+
   function setStatus(text, ok=false){
     statusBadge.textContent = text;
     statusBadge.style.background = ok ? "rgba(185,255,205,.10)" : "rgba(255,43,43,.10)";
@@ -313,6 +328,7 @@
   function updateOffsetLabel(){ offsetMsEl.textContent = String(Math.round(serverOffsetMs)); }
   function updateHostLabel(){ hostIdText.textContent = hostId || "—"; }
   function updateModeLabel(){ modeText.textContent = mode; }
+  function updateDriftLabel(){ driftMsEl.textContent = String(Math.round(driftS * 1000)); }
 
   function enableAfterConnect(enabled){
     btnCreateRoom.disabled = !enabled;
@@ -341,21 +357,21 @@
     ws.send(JSON.stringify(obj));
   }
 
-  function startPinging(){
-    stopPinging();
-    pingInterval = setInterval(() => {
-      wsSend({ type:"ping", t0: nowMs() });
-    }, 2000);
-  }
   function stopPinging(){
     if (pingInterval) clearInterval(pingInterval);
     pingInterval = null;
   }
 
+  // Multi-sample offset smoothing (low jitter)
+  function startPinging(){
+    stopPinging();
+    pingInterval = setInterval(() => {
+      wsSend({ type:"ping", t0: nowMs() });
+    }, 1200);
+  }
+
   function hardCloseAllPeers(){
-    for (const [pid, pc] of pcs.entries()) {
-      try { pc.close(); } catch {}
-    }
+    for (const pc of pcs.values()) { try { pc.close(); } catch {} }
     pcs.clear();
     dataCh.clear();
     fileRx.clear();
@@ -368,7 +384,6 @@
 
     reconnectAttempt += 1;
     const delay = Math.min(12000, 700 + reconnectAttempt * 900);
-
     log(`Reconnecting in ${delay}ms...`, "warn");
     setStatus("Reconnecting...", false);
 
@@ -400,10 +415,8 @@
       enableAfterConnect(true);
       startPinging();
       log("WebSocket connected.", "ok");
-
       wsSend({ type:"hello", id: myId });
 
-      // Auto re-join / re-create after reconnect
       setTimeout(() => {
         if (!room) room = roomIdInput.value.trim() || getRoomFromUrl();
         if (!room) return;
@@ -418,9 +431,7 @@
       }, 200);
     };
 
-    ws.onerror = () => {
-      log("WebSocket error.", "err");
-    };
+    ws.onerror = () => log("WebSocket error.", "err");
 
     ws.onclose = () => {
       setStatus("Disconnected", false);
@@ -429,9 +440,8 @@
       btnCopyLink.disabled = true;
       btnRequestConnect.disabled = true;
       stopPinging();
-
       hardCloseAllPeers();
-
+      stopHostTicks();
       log("WebSocket disconnected.", "warn");
       scheduleReconnect();
     };
@@ -446,6 +456,7 @@
       }
 
       if (msg.type === "hello_ack") {
+        // rough init offset
         serverOffsetMs = (msg.serverNow || 0) - nowMs();
         updateOffsetLabel();
         log("Handshake OK.", "ok");
@@ -453,11 +464,15 @@
       }
 
       if (msg.type === "pong") {
+        // NTP-like correction: estimate at receive time
         const t0 = msg.t0;
         const t1 = nowMs();
         const rtt = (t1 - t0);
         const approxServerAtT1 = (msg.serverNow || 0) + (rtt/2);
-        serverOffsetMs = approxServerAtT1 - t1;
+        const newOff = approxServerAtT1 - t1;
+
+        // smooth
+        serverOffsetMs = serverOffsetMs * 0.85 + newOff * 0.15;
         updateOffsetLabel();
         return;
       }
@@ -465,6 +480,7 @@
       if (msg.type === "host_update") {
         hostId = msg.hostId || "";
         updateHostLabel();
+        btnRequestConnect.disabled = (!hostId || hostId === myId);
         return;
       }
 
@@ -474,12 +490,8 @@
         setLinkInUrl(room);
         btnCopyLink.disabled = false;
 
-        mode = "host";
-        updateModeLabel();
-
-        hostId = myId;
-        updateHostLabel();
-
+        mode = "host"; updateModeLabel();
+        hostId = myId; updateHostLabel();
         setRole("Host");
         log(`Room created: ${room}`, "ok");
         return;
@@ -498,7 +510,7 @@
         updateModeLabel();
 
         setRole(hostId === myId ? "Host" : "Listener");
-        btnRequestConnect.disabled = (hostId === myId);
+        btnRequestConnect.disabled = (!hostId || hostId === myId);
 
         log(`Joined room: ${room} (host=${hostId || "?"})`, "ok");
 
@@ -537,7 +549,12 @@
         if (payload.kind === "offer") { await handleOffer(from, payload.sdp); return; }
         if (payload.kind === "answer") { await handleAnswer(from, payload.sdp); return; }
         if (payload.kind === "ice") { await handleIce(from, payload.candidate); return; }
-        if (payload.kind === "sync") { if (mode !== "host") listenerApplySync(payload); return; }
+
+        // IMPORTANT: we use serverNow from server relay (lower jitter)
+        if (payload.kind === "sync") {
+          if (mode !== "host") listenerApplySync(payload, msg.serverNow);
+          return;
+        }
       }
     };
   }
@@ -604,6 +621,10 @@
           enablePlayerControls();
           log(`MP3 ready: ${state.name}`, "ok");
           fileRx.delete(peerId);
+
+          // reset correction state
+          driftS = 0; updateDriftLabel();
+          audio.playbackRate = 1.0;
         } else if (msg.kind === "need_file") {
           if (mode === "host" && hostFileMeta) {
             sendFileMeta(peerId);
@@ -702,60 +723,133 @@
     wsSend({ type:"relay", room, to:"*", from: myId, payload });
   }
 
+  function startHostTicks(){
+    stopHostTicks();
+    hostTickTimer = setInterval(() => {
+      if (mode !== "host") return;
+      if (audio.src && !audio.paused) {
+        const serverNow = nowMs() + serverOffsetMs;
+        hostBroadcast({
+          kind:"sync",
+          action:"tick",
+          serverNow,
+          atTime: audio.currentTime || 0,
+          playing: true
+        });
+      }
+    }, TICK_EVERY_MS);
+  }
+
+  function stopHostTicks(){
+    if (hostTickTimer) clearInterval(hostTickTimer);
+    hostTickTimer = null;
+  }
+
   function hostPlay(){
-    const serverTimeTarget = (nowMs() + serverOffsetMs) + 700;
+    const serverTimeTarget = (nowMs() + serverOffsetMs) + START_LEAD_MS;
     const t = audio.currentTime || 0;
+
     hostBroadcast({ kind:"sync", action:"play", serverTimeTarget, atTime: t });
     scheduleAtServerTime(serverTimeTarget, () => {
       audio.currentTime = t;
       audio.play().catch(()=>{});
+      startHostTicks();
     });
   }
 
   function hostPause(){
-    const serverTimeTarget = (nowMs() + serverOffsetMs) + 350;
+    const serverTimeTarget = (nowMs() + serverOffsetMs) + PAUSE_LEAD_MS;
     const t = audio.currentTime || 0;
+
     hostBroadcast({ kind:"sync", action:"pause", serverTimeTarget, atTime: t });
     scheduleAtServerTime(serverTimeTarget, () => {
       audio.pause();
       audio.currentTime = t;
+      stopHostTicks();
     });
   }
 
   function hostResync(){
-    const serverTimeTarget = (nowMs() + serverOffsetMs) + 350;
+    const serverTimeTarget = (nowMs() + serverOffsetMs) + PAUSE_LEAD_MS;
     const t = audio.currentTime || 0;
     const playing = !audio.paused;
+
     hostBroadcast({ kind:"sync", action:"resync", serverTimeTarget, atTime: t, playing });
   }
 
-  function listenerApplySync(msg){
-    const { action, serverTimeTarget, atTime, playing } = msg;
-    scheduleAtServerTime(serverTimeTarget, async () => {
-      try {
-        const drift = Math.abs((audio.currentTime || 0) - (atTime || 0));
-        if (drift > 0.08) audio.currentTime = atTime || 0;
+  function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
 
-        if (action === "play") {
-          audio.currentTime = atTime || 0;
+  function listenerApplySync(msg, relayServerNow){
+    // Use relayServerNow (server time at relay) for better alignment
+    const serverNowAtReceive = (typeof relayServerNow === "number") ? relayServerNow : (nowMs() + serverOffsetMs);
+
+    if (msg.action === "play") {
+      scheduleAtServerTime(msg.serverTimeTarget, async () => {
+        try {
+          audio.playbackRate = 1.0;
+          audio.currentTime = msg.atTime || 0;
           await audio.play();
-        } else if (action === "pause") {
-          audio.pause();
-          audio.currentTime = atTime || 0;
-        } else if (action === "resync") {
-          audio.currentTime = atTime || 0;
-          if (playing) await audio.play();
+        } catch {}
+      });
+      return;
+    }
+
+    if (msg.action === "pause") {
+      scheduleAtServerTime(msg.serverTimeTarget, () => {
+        audio.pause();
+        audio.playbackRate = 1.0;
+        audio.currentTime = msg.atTime || 0;
+      });
+      return;
+    }
+
+    if (msg.action === "resync") {
+      scheduleAtServerTime(msg.serverTimeTarget, async () => {
+        try {
+          audio.playbackRate = 1.0;
+          audio.currentTime = msg.atTime || 0;
+          if (msg.playing) await audio.play();
           else audio.pause();
-        }
-      } catch {}
-    });
+        } catch {}
+      });
+      return;
+    }
+
+    if (msg.action === "tick") {
+      // Estimate what time we SHOULD be at now
+      // expected = atTime + (serverNowAtReceive - serverNowSent)/1000
+      const serverNowSent = msg.serverNow;
+      if (typeof serverNowSent !== "number") return;
+
+      const expected = (msg.atTime || 0) + (serverNowAtReceive - serverNowSent) / 1000;
+      const actual = audio.currentTime || 0;
+
+      driftS = actual - expected;
+      updateDriftLabel();
+
+      // Hard seek when big drift
+      if (Math.abs(driftS) > SEEK_THRESHOLD_S) {
+        audio.playbackRate = 1.0;
+        audio.currentTime = expected;
+        return;
+      }
+
+      // Soft correction by nudging playbackRate
+      if (Math.abs(driftS) > SOFT_THRESHOLD_S && !audio.paused) {
+        // If we are ahead (positive drift), slow down slightly; if behind, speed up
+        const targetDelta = clamp((-driftS / RATE_RECOVER_S), -MAX_RATE_DELTA, MAX_RATE_DELTA);
+        const rate = 1.0 + targetDelta;
+        audio.playbackRate = rate;
+      } else {
+        // Return to normal
+        audio.playbackRate = 1.0;
+      }
+      return;
+    }
   }
 
-  btnConnect.onclick = () => {
-    wantConnected = true;
-    connectSocket(false);
-  };
-
+  // ---------- UI actions ----------
+  btnConnect.onclick = () => { wantConnected = true; connectSocket(false); };
   btnReconnectNow.onclick = () => {
     wantConnected = true;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
@@ -822,9 +916,153 @@
   btnPause.onclick = () => { if (mode === "host") hostPause(); else log("Only Host controls Play/Pause.", "warn"); };
   btnSync.onclick = () => { if (mode === "host") hostResync(); else log("Only Host can resync.", "warn"); };
 
-  audio.addEventListener("seeked", () => { if (mode === "host") hostResync(); });
+  audio.addEventListener("pause", () => { if (mode === "host") stopHostTicks(); });
+  audio.addEventListener("play", () => { if (mode === "host") startHostTicks(); });
 
-  // Initial UI
+  // ---------- WebRTC ----------
+  function makePC(peerId){
+    const pc = new RTCPeerConnection({ iceServers });
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        wsSend({ type:"relay", room, to: peerId, from: myId, payload: { kind:"ice", candidate: e.candidate } });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      log(`RTC(${peerId}) state: ${pc.connectionState}`, pc.connectionState === "connected" ? "ok" : "warn");
+    };
+
+    pc.ondatachannel = (e) => bindDataChannel(peerId, e.channel);
+
+    pcs.set(peerId, pc);
+    updatePeerCount();
+    return pc;
+  }
+
+  function bindDataChannel(peerId, ch){
+    dataCh.set(peerId, ch);
+    ch.binaryType = "arraybuffer";
+
+    ch.onopen = async () => {
+      log(`DataChannel open with ${peerId}`, "ok");
+      if (mode === "host" && hostFileMeta) {
+        sendFileMeta(peerId);
+        await sendFileData(peerId);
+      } else if (mode === "listener") {
+        ch.send(JSON.stringify({ kind:"need_file" }));
+      }
+    };
+    ch.onclose = () => log(`DataChannel closed with ${peerId}`, "warn");
+    ch.onerror = () => log(`DataChannel error with ${peerId}`, "err");
+
+    ch.onmessage = async (ev) => {
+      if (typeof ev.data === "string") {
+        const msg = JSON.parse(ev.data);
+        if (msg.kind === "file_meta") {
+          fileRx.set(peerId, { chunks: [], mime: msg.type, name: msg.name });
+          log(`Receiving "${msg.name}"...`, "ok");
+        } else if (msg.kind === "file_end") {
+          const state = fileRx.get(peerId);
+          if (!state) return;
+          const blob = new Blob(state.chunks, { type: state.mime || "audio/mpeg" });
+          const url = URL.createObjectURL(blob);
+          audio.src = url;
+          audio.load();
+          enablePlayerControls();
+          log(`MP3 ready: ${state.name}`, "ok");
+          fileRx.delete(peerId);
+          driftS = 0; updateDriftLabel();
+          audio.playbackRate = 1.0;
+        } else if (msg.kind === "need_file") {
+          if (mode === "host" && hostFileMeta) {
+            sendFileMeta(peerId);
+            await sendFileData(peerId);
+          }
+        }
+      } else {
+        const state = fileRx.get(peerId);
+        if (!state) return;
+        state.chunks.push(ev.data);
+      }
+    };
+  }
+
+  function sendFileMeta(peerId){
+    const ch = dataCh.get(peerId);
+    if (!ch || ch.readyState !== "open") return;
+    ch.send(JSON.stringify({ kind:"file_meta", ...hostFileMeta }));
+  }
+
+  async function sendFileData(peerId){
+    const ch = dataCh.get(peerId);
+    if (!ch || ch.readyState !== "open") return;
+    if (!hostFileArrayBuffer) return;
+
+    const chunkSize = 16 * 1024;
+    const buf = hostFileArrayBuffer;
+    let offset = 0;
+
+    log(`Sending file to ${peerId}...`, "ok");
+
+    while (offset < buf.byteLength) {
+      const slice = buf.slice(offset, offset + chunkSize);
+      ch.send(slice);
+      offset += chunkSize;
+
+      if (ch.bufferedAmount > 4 * 1024 * 1024) {
+        await new Promise(r => setTimeout(r, 40));
+      } else {
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    ch.send(JSON.stringify({ kind:"file_end" }));
+    log(`File sent to ${peerId}`, "ok");
+  }
+
+  async function createOffer(peerId){
+    const pc = pcs.get(peerId) || makePC(peerId);
+    const ch = pc.createDataChannel("file");
+    bindDataChannel(peerId, ch);
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    wsSend({ type:"relay", room, to: peerId, from: myId, payload: { kind:"offer", sdp: pc.localDescription } });
+  }
+
+  async function handleOffer(peerId, sdp){
+    const pc = pcs.get(peerId) || makePC(peerId);
+    await pc.setRemoteDescription(sdp);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    wsSend({ type:"relay", room, to: peerId, from: myId, payload: { kind:"answer", sdp: pc.localDescription } });
+  }
+
+  async function handleAnswer(peerId, sdp){
+    const pc = pcs.get(peerId);
+    if (!pc) return;
+    await pc.setRemoteDescription(sdp);
+  }
+
+  async function handleIce(peerId, candidate){
+    const pc = pcs.get(peerId);
+    if (!pc) return;
+    try { await pc.addIceCandidate(candidate); } catch {}
+  }
+
+  function closePeer(peerId){
+    const pc = pcs.get(peerId);
+    if (pc) pc.close();
+    pcs.delete(peerId);
+    dataCh.delete(peerId);
+    fileRx.delete(peerId);
+    updatePeerCount();
+  }
+
+  // ---------- Initial UI ----------
   const urlRoom = getRoomFromUrl();
   if (urlRoom) roomIdInput.value = urlRoom;
 
@@ -833,16 +1071,13 @@
   updatePeerCount();
   updateHostLabel();
   updateModeLabel();
+  driftS = 0; updateDriftLabel();
 
   // Auto-connect if opened via shared link
   if (getRoomFromUrl()) {
     wantConnected = true;
     connectSocket(true);
   }
-
-  // Enable request button only after join/host update
-  const origSetRole = setRole;
-  setRole = (...args) => origSetRole(...args);
 })();
 </script>
 </body>
